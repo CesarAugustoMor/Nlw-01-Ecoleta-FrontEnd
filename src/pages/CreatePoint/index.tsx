@@ -1,11 +1,26 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FiArrowLeft } from 'react-icons/fi';
 import { Map, Marker, TileLayer } from 'react-leaflet';
 import { Link } from 'react-router-dom';
 import logo from '../../assets/logo.svg';
+import api from '../../services/api';
 import './styles.css';
 
+interface Item {
+  id: number;
+  title: string;
+  image_url: string;
+}
+
 const CreatePoint: React.FC = () => {
+  const [items, setItems] = useState<Item[]>([]);
+
+  useEffect(() => {
+    api.get('items').then((response) => {
+      setItems(response.data);
+    });
+  }, []);
+
   return (
     <div id="page-create-point">
       <header>
@@ -81,30 +96,12 @@ const CreatePoint: React.FC = () => {
             <span>Seleciona um ou mais itens abaixo</span>
           </legend>
           <ul className="items-grid">
-            <li>
-              <img src="http://localhost:3333/uploads/oleo.svg" alt="Teste" />
-              <span>Óleo de Cozinha</span>
-            </li>
-            <li className="selected">
-              <img src="http://localhost:3333/uploads/oleo.svg" alt="Teste" />
-              <span>Óleo de Cozinha</span>
-            </li>
-            <li>
-              <img src="http://localhost:3333/uploads/oleo.svg" alt="Teste" />
-              <span>Óleo de Cozinha</span>
-            </li>
-            <li>
-              <img src="http://localhost:3333/uploads/oleo.svg" alt="Teste" />
-              <span>Óleo de Cozinha</span>
-            </li>
-            <li>
-              <img src="http://localhost:3333/uploads/oleo.svg" alt="Teste" />
-              <span>Óleo de Cozinha</span>
-            </li>
-            <li>
-              <img src="http://localhost:3333/uploads/oleo.svg" alt="Teste" />
-              <span>Óleo de Cozinha</span>
-            </li>
+            {items.map((item) => (
+              <li key={item.id}>
+                <img src={item.image_url} alt={item.title} />
+                <span>{item.title}</span>
+              </li>
+            ))}
           </ul>
         </fieldset>
         <button type="submit">Cadastrar ponto de coleta</button>
