@@ -11,6 +11,7 @@ import { FiArrowLeft } from 'react-icons/fi';
 import { Map, Marker, TileLayer } from 'react-leaflet';
 import { Link, useHistory } from 'react-router-dom';
 import logo from '../../assets/logo.svg';
+import Dropzone from '../../components/Dropzone';
 import api from '../../services/api';
 import './styles.css';
 
@@ -26,7 +27,7 @@ interface Uf {
   nome: string;
 }
 
-interface city {
+interface City {
   id: number;
   nome: string;
 }
@@ -35,7 +36,7 @@ const CreatePoint: React.FC = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [ufs, setUfs] = useState<Uf[]>([]);
   const [selctedUf, setSelectedUf] = useState('0');
-  const [cities, setCities] = useState<city[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -51,17 +52,19 @@ const CreatePoint: React.FC = () => {
     0,
     0,
   ]);
+  const [selectedFile, setSelectedFile] = useState<File>();
+
   const history = useHistory();
 
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition((position) => {
+    navigator.geolocation.getCurrentPosition(position => {
       const { latitude, longitude } = position.coords;
       setInitialPosition([latitude, longitude]);
     });
   }, []);
 
   useEffect(() => {
-    api.get('items').then((response) => {
+    api.get('items').then(response => {
       setItems(response.data);
     });
   }, []);
@@ -69,9 +72,9 @@ const CreatePoint: React.FC = () => {
   useEffect(() => {
     axios
       .get(
-        'https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome'
+        'https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome',
       )
-      .then((response) => {
+      .then(response => {
         setUfs(response.data);
       });
   }, []);
@@ -83,9 +86,9 @@ const CreatePoint: React.FC = () => {
     }
     axios
       .get(
-        `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selctedUf}/municipios`
+        `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selctedUf}/municipios`,
       )
-      .then((response) => {
+      .then(response => {
         setCities(response.data);
       });
   }, [selctedUf]);
@@ -95,14 +98,14 @@ const CreatePoint: React.FC = () => {
       setSelectedUf(event.target.value);
       setSelectedCity('0');
     },
-    []
+    [],
   );
 
   const handleSelectCity = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {
       setSelectedCity(event.target.value);
     },
-    []
+    [],
   );
 
   const handleInputChange = useCallback(
@@ -114,43 +117,45 @@ const CreatePoint: React.FC = () => {
         [name]: value,
       });
     },
-    [formData]
+    [formData],
   );
 
   const handleSelectedItem = useCallback(
     (id: number) => {
       if (selectedItems.includes(id)) {
-        setSelectedItems(
-          selectedItems.filter((idSelected) => idSelected !== id)
-        );
+        setSelectedItems(selectedItems.filter(idSelected => idSelected !== id));
       } else {
         setSelectedItems([...selectedItems, id]);
       }
     },
-    [selectedItems]
+    [selectedItems],
   );
 
   const handleSubmit = useCallback(
     async (event: FormEvent) => {
       event.preventDefault();
       const { name, email, whatsapp } = formData;
-      const uf = ufs.find((uf) => uf.id === Number(selctedUf));
+      const uf = ufs.find(ufFind => ufFind.id === Number(selctedUf));
       const city = selectedCity;
       const [latitude, longitude] = selectedPosition;
-      const items = selectedItems;
-      const data = {
-        name,
-        email,
-        whatsapp,
-        uf,
-        city,
-        latitude,
-        longitude,
-        items,
-      };
+
+      const data = new FormData();
+
+      data.append('name', name);
+      data.append('email', email);
+      data.append('whatsapp', whatsapp);
+      data.append('city', city);
+      data.append('latitude', String(latitude));
+      data.append('longitude', String(longitude));
+      data.append('items', selectedItems.join(','));
+      if (selectedFile && uf) {
+        data.append('uf', uf?.sigla);
+        data.append('image', selectedFile);
+      }
 
       await api.post('points', data);
 
+      // eslint-disable-next-line no-alert
       alert('Ponto de coleta criado!');
 
       history.push('/');
@@ -160,10 +165,11 @@ const CreatePoint: React.FC = () => {
       history,
       selctedUf,
       selectedCity,
+      selectedFile,
       selectedItems,
       selectedPosition,
       ufs,
-    ]
+    ],
   );
 
   const handleMapClick = useCallback((event: LeafletMouseEvent) => {
@@ -186,6 +192,8 @@ const CreatePoint: React.FC = () => {
           Cadastro do <br />
           ponto de coleta
         </h1>
+
+        <Dropzone onFileUploaded={setSelectedFile} />
 
         <fieldset>
           <legend>
@@ -248,11 +256,10 @@ const CreatePoint: React.FC = () => {
                 onChange={handleSelectUf}
               >
                 <option value="0">Selecione um estado</option>
-                {ufs.map((uf) => (
-                  <option
-                    key={uf.id}
-                    value={uf.id}
-                  >{`${uf.sigla} - ${uf.nome}`}</option>
+                {ufs.map(uf => (
+                  <option key={uf.id} value={uf.id}>
+                    {`${uf.sigla} - ${uf.nome}`}
+                  </option>
                 ))}
               </select>
             </div>
@@ -265,7 +272,7 @@ const CreatePoint: React.FC = () => {
                 onChange={handleSelectCity}
               >
                 <option value="0">Selecione uma cidade</option>
-                {cities.map((city) => (
+                {cities.map(city => (
                   <option key={city.id} value={city.nome}>
                     {city.nome}
                   </option>
@@ -281,7 +288,7 @@ const CreatePoint: React.FC = () => {
             <span>Seleciona um ou mais itens abaixo</span>
           </legend>
           <ul className="items-grid">
-            {items.map((item) => (
+            {items.map(item => (
               <li
                 key={item.id}
                 onClick={() => handleSelectedItem(item.id)}
